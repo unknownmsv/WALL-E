@@ -1,6 +1,6 @@
 <!-- PROJECT LOGO & HEADER -->
 <div align="center">
-  <a href="https://github.com/unknownsv/WALL-E">
+  <a href="https://github.com/unknownmsv/WALL-E/">
     <img src="https://img.freepik.com/free-vector/cute-artificial-intelligence-robot-isometric-icon_1284-63045.jpg?w=826" alt="WALL-E Logo" width="200" height="200">
   </a>
 
@@ -14,10 +14,10 @@
     <a href="https://github.com/unknownsv/WALL-E/graphs/contributors">
       <img src="https://img.shields.io/github/contributors/unknownsv/WALL-E?style=flat-square&color=orange" alt="Contributors" />
     </a>
-    <a href="https://github.com/unknownsv/WALL-E/stargazers">
+    <a href="https://github.com/unknownmsv/WALL-E/stargazers">
       <img src="https://img.shields.io/github/stars/unknownsv/WALL-E?style=flat-square&color=yellow" alt="Stars" />
     </a>
-    <a href="https://github.com/unknownsv/WALL-E/issues">
+    <a href="https://github.com/unknownmsv/WALL-E/issues">
       <img src="https://img.shields.io/github/issues/unknownsv/WALL-E?style=flat-square&color=blue" alt="Issues" />
     </a>
     <a href="https://python.org">
@@ -79,7 +79,7 @@ Follow these steps to get a local copy up and running.
 
 1.  **Clone the Repository**
     ```bash
-    git clone https://github.com/unknownsv/WALL-E.git
+    git clone https://github.com/unknownmsv/WALL-E.git
     ```
 
 2.  **Navigate to the Directory**
