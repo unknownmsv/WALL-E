@@ -1,0 +1,66 @@
+{
+  "available_models": {
+    "openai/gpt-4o-mini": {
+      "name": "GPT-4o Mini",
+      "description": "OpenAI GPT-4o Mini model - Fast and efficient",
+      "provider": "openai",
+      "category": "general",
+      "max_tokens": 8000,
+      "context_window": 200000
+    },
+    "google/gemini-2.0-flash-001": {
+      "name": "Gemini 2.0 Flash", 
+      "description": "Google Gemini 2.0 Flash model - Ultra fast response",
+      "provider": "google",
+      "category": "general",
+      "max_tokens": 8000,
+      "context_window": 1000000
+    },
+    "openai/gpt-5-nano": {
+      "name": "GPT-5 Nano",
+      "description": "OpenAI GPT-5 Nano model - Compact and powerful",
+      "provider": "openai",
+      "category": "general", 
+      "max_tokens": 8000,
+      "context_window": 400000
+    },
+    "deepseek/deepseek-chat-v3.1": {
+      "name": "DeepSeek Chat v3",
+      "description": "DeepSeek Chat v3.1 model - Specialized for coding",
+      "provider": "deepseek",
+      "category": "coding",
+      "max_tokens": 8000,
+      "context_window": 128000
+    },
+    "google/gemini-3-pro-preview": {
+      "name": "gemini 3 code",
+      "description": "gemini 3 pro google model",
+      "provider": "google",
+      "category": "coding",
+      "max_tokens": 8000,
+      "context_window": 1000000
+    },
+    "openai/gpt-5.1-codex-mini": {
+      "name": "GPT-5.1 mini codex",
+      "description": "OpenAI GPT-5.1 mini model - Compact and powerful",
+      "provider": "openai",
+      "category": "coding", 
+      "max_tokens": 8000,
+      "context_window": 400000
+    }
+  },
+  "default_model": "openai/gpt-4o-mini",
+  "model_categories": {
+    "general": "General Purpose",
+    "coding": "Code Specialized", 
+    "creative": "Creative Writing",
+    "analysis": "Data Analysis"
+  },
+  "providers": {
+    "openai": "OpenAI",
+    "google": "Google",
+    "deepseek": "DeepSeek",
+    "anthropic": "Anthropic",
+    "meta": "Meta"
+  }
+}

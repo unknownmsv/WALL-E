@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - WALL•E</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-tertiary: #111111;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --accent: #3b82f6;
+            --border: #333333;
+            --success: #22c55e;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', 'Tahoma', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .settings-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #a371f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .settings-section {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .api-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .api-option:hover {
+            border-color: var(--accent);
+        }
+
+        .api-option.active {
+            border-color: var(--accent);
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        .radio-btn {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .radio-btn::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            display: none;
+        }
+
+        .api-option.active .radio-btn::after {
+            display: block;
+        }
+
+        .option-content {
+            flex: 1;
+        }
+
+        .option-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .option-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .custom-api-fields {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            display: none;
+        }
+
+        .custom-api-fields.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .save-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .save-btn:hover {
+            background-color: #2563eb;
+        }
+
+        .status-message {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+
+        .status-message.success {
+            background-color: rgba(34, 197, 94, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+            display: block;
+        }
+
+        .status-message.error {
+            background-color: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="settings-container">
+        <div class="header">
+            <button class="back-btn" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div class="logo">WALL•E Settings</div>
+        </div>
+
+        <div class="settings-section">
+            <h2 class="section-title">API Configuration</h2>
+            
+            <div class="api-option active" onclick="selectApiOption('default')">
+                <div class="radio-btn"></div>
+                <div class="option-content">
+                    <div class="option-title">Default API</div>
+                    <div class="option-description">Use the built-in API configuration (Recommended for most users)</div>
+                </div>
+            </div>
+
+            <div class="api-option" onclick="selectApiOption('custom')">
+                <div class="radio-btn"></div>
+                <div class="option-content">
+                    <div class="option-title">Custom API</div>
+                    <div class="option-description">Use your own API endpoint and key</div>
+                </div>
+            </div>
+
+            <div class="custom-api-fields" id="customApiFields">
+                <div class="form-group">
+                    <label class="form-label">API URL</label>
+                    <input type="url" class="form-input" id="apiUrl" placeholder="https://api.example.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">API Key</label>
+                    <input type="password" class="form-input" id="apiKey" placeholder="Enter your API key">
+                </div>
+            </div>
+
+            <button class="save-btn" onclick="saveSettings()">
+                Save Settings
+            </button>
+
+            <div class="status-message" id="statusMessage"></div>
+        </div>
+
+        <div class="settings-section">
+            <h2 class="section-title">About</h2>
+            <p style="color: var(--text-secondary); line-height: 1.6;">
+                WALL•E is an AI assistant that helps you with various tasks including code analysis, 
+                content creation, and problem solving. It supports multiple AI models and provides 
+                a seamless chatting experience.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let currentSettings = {
+            useDefault: true,
+            customUrl: '',
+            customKey: ''
+        };
+
+        function loadSettings() {
+            try {
+                const settings = localStorage.getItem('wallE_apiSettings');
+                if (settings) {
+                    currentSettings = JSON.parse(settings);
+                    updateUI();
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        function updateUI() {
+            if (currentSettings.useDefault) {
+                selectApiOption('default');
+            } else {
+                selectApiOption('custom');
+                document.getElementById('apiUrl').value = currentSettings.customUrl;
+                document.getElementById('apiKey').value = currentSettings.customKey;
+            }
+        }
+
+        function selectApiOption(option) {
+            // Update radio buttons
+            document.querySelectorAll('.api-option').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            if (option === 'default') {
+                document.querySelectorAll('.api-option')[0].classList.add('active');
+                document.getElementById('customApiFields').classList.remove('active');
+                currentSettings.useDefault = true;
+            } else {
+                document.querySelectorAll('.api-option')[1].classList.add('active');
+                document.getElementById('customApiFields').classList.add('active');
+                currentSettings.useDefault = false;
+            }
+        }
+
+        function saveSettings() {
+            if (!currentSettings.useDefault) {
+                const apiUrl = document.getElementById('apiUrl').value.trim();
+                const apiKey = document.getElementById('apiKey').value.trim();
+
+                if (!apiUrl || !apiKey) {
+                    showStatus('Please fill in all custom API fields', 'error');
+                    return;
+                }
+
+                currentSettings.customUrl = apiUrl;
+                currentSettings.customKey = apiKey;
+            }
+
+            try {
+                localStorage.setItem('wallE_apiSettings', JSON.stringify(currentSettings));
+                showStatus('Settings saved successfully!', 'success');
+                
+                // Notify the main window about settings change
+                if (window.opener) {
+                    window.opener.postMessage({ type: 'settingsUpdated' }, '*');
+                }
+            } catch (error) {
+                showStatus('Error saving settings', 'error');
+                console.error('Error saving settings:', error);
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = `status-message ${type}`;
+            
+            setTimeout(() => {
+                statusEl.className = 'status-message';
+            }, 3000);
+        }
+
+        function goBack() {
+            window.close();
+        }
+
+        // Load settings when page loads
+        document.addEventListener('DOMContentLoaded', loadSettings);
+    </script>
+</body>
+</html>

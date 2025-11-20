@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WALL•E - AI Assistant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="ai-icon-header">✦</div>
+                <button class="new-chat-btn-sidebar" id="newChatBtn">
+                    <i class="fas fa-edit"></i>
+                    New Chat
+                </button>
+            </div>
+            <div class="chat-history" id="chatHistory">
+                <!-- Chat history will be populated here -->
+            </div>
+            <div class="sidebar-footer">
+                <button class="settings-btn" id="settingsBtn" onclick="openSettings()">
+                    <i class="fas fa-cog"></i>
+                    Settings
+                </button>
+            </div>
+        </div>
+
+        <!-- Overlay for mobile -->
+        <div class="overlay" id="overlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content" id="mainContent">
+            <div class="header">
+                <button class="menu-btn" id="menuBtn" title="Open sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo">WALL•E</div>
+                <button class="quick-new-chat" id="quickNewChat" title="New chat">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+
+            <div class="chat-container" id="chatContainer">
+                <!-- Welcome State -->
+                <div class="welcome-state" id="welcomeState">
+                    <div class="logo-large">✦</div>
+                    <h1 class="welcome-title">Hello, I'm WALL•E</h1>
+                    <p class="welcome-subtitle">Your AI assistant. How can I help you today?</p>
+                    <div class="suggestion-chips" id="suggestionChips">
+                        <!-- Suggestions will be populated from config -->
+                    </div>
+                </div>
+
+                <!-- Chat messages will be populated here -->
+            </div>
+
+            <!-- Input Bar -->
+            <div class="input-bar">
+                <div class="input-wrapper">
+                    <div class="input-container">
+                        <div class="file-upload-wrapper">
+                            <button class="attachment-btn" id="attachmentBtn" title="Upload file">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <input type="file" class="file-input" id="fileInput" accept=".py,.js,.html,.rs,.ts,.css">
+                        </div>
+                        <textarea 
+                            class="text-input" 
+                            id="textInput" 
+                            placeholder="Ask anything..." 
+                            rows="1"
+                        ></textarea>
+                        <div class="model-selector-container">
+                            <div class="model-selector-icon">✦</div>
+                            <select class="model-selector" id="modelSelector">
+                                <!-- Models will be auto-populated from API -->
+                                <option value="" disabled selected>Loading models...</option>
+                            </select>
+                        </div>
+                        <button class="send-btn" id="sendBtn" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div class="file-info" id="fileInfo"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rename Chat Modal -->
+        <div class="modal" id="renameModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Rename Chat</h3>
+                    <button class="close-modal" id="closeRenameModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <input type="text" class="modal-input" id="renameInput" placeholder="Enter new chat name">
+                <div class="modal-actions">
+                    <button class="modal-btn secondary" id="cancelRename">Cancel</button>
+                    <button class="modal-btn primary" id="confirmRename">Rename</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
