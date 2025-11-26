@@ -47,6 +47,14 @@
       "category": "coding", 
       "max_tokens": 8000,
       "context_window": 400000
+    },
+    "x-ai/grok-4-fast": {
+      "name": "grok 4 fast",
+      "description": "grok 4 fast is a fun and cool ai model",
+      "provider": "x-ai",
+      "category": "therapy",
+      "max_tokens": 300000,
+      "context_window": 2000000
     }
   },
   "default_model": "openai/gpt-4o-mini",
@@ -54,13 +62,15 @@
     "general": "General Purpose",
     "coding": "Code Specialized", 
     "creative": "Creative Writing",
-    "analysis": "Data Analysis"
+    "analysis": "Data Analysis",
+    "therapy": "fun and gapy ai assistan"
   },
   "providers": {
     "openai": "OpenAI",
     "google": "Google",
     "deepseek": "DeepSeek",
     "anthropic": "Anthropic",
-    "meta": "Meta"
+    "meta": "Meta",
+    "x-ai": "x-ai"
   }
 }

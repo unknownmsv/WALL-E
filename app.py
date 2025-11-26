@@ -2,14 +2,14 @@
 WALL•E - AI Assistant Platform Backend
 --------------------------------------
 Author: Sina & Code•Sage
-Version: 2.0.0 (Refactored & Secured)
+Version: 2.1.0 (Dynamic Prompts Logic Added)
 License: MIT
 
 Description:
     This is the main backend entry point for the WALL•E platform.
     It handles API requests, manages chat history with SQLite,
     implements AES-256 encryption for data security, and proxies
-    requests to AI providers.
+    requests to AI providers with dynamic system prompt selection.
 """
 
 import os
@@ -146,6 +146,7 @@ class ConfigManager:
 
     DEFAULT_PROMPTS = {
         "system_prompt": "You are WALL•E, a helpful AI assistant.",
+        "model_specific_prompts": {},
         "welcome_message": "Hello! I'm WALL•E. How can I help?"
     }
 
@@ -376,8 +377,9 @@ def serve_index():
 def api_status():
     return jsonify({
         "status": "WALL•E is online",
-        "version": "2.0.0",
-        "encryption": "AES-256-GCM Enabled"
+        "version": "2.1.0",
+        "encryption": "AES-256-GCM Enabled",
+        "dynamic_prompts": "Active"
     })
 
 @app.route('/api/config')
@@ -447,12 +449,37 @@ def delete_chat(chat_id):
 # ==========================================
 
 def _prepare_proxy_payload(data: Dict, stream: bool) -> Dict:
-    """Prepares the payload for the AI Proxy."""
+    """
+    Prepares the payload for the AI Proxy.
+    UPDATED: Now selects system prompt based on model category.
+    """
     user_prompt = data.get("prompt", "").strip()
     chat_history = data.get("chat_history", [])
+    model_name = data.get("model")
+    
+    # --- LOGIC START: Dynamic Prompt Selection ---
+    
+    # 1. Retrieve Model Configuration
+    # We look up the model settings to find its "category" (e.g., 'coding', 'creative')
+    available_models = models_config.get("available_models", {})
+    current_model_config = available_models.get(model_name, {})
+    model_category = current_model_config.get("category", "general") # Default to 'general'
+    
+    # 2. Retrieve Appropriate System Prompt
+    # We check if there is a specific prompt for this category in system.json
+    specific_prompts = prompts_config.get("model_specific_prompts", {})
+    fallback_prompt = prompts_config.get("system_prompt", "You are a helpful AI assistant.")
+    
+    if model_category in specific_prompts:
+        system_prompt = specific_prompts[model_category]
+        logger.info(f"🧠 Selected Prompt: '{model_category}' for model '{model_name}'")
+    else:
+        system_prompt = fallback_prompt
+        logger.info(f"🧠 Selected Prompt: 'Default/Fallback' for model '{model_name}'")
+
+    # --- LOGIC END ---
     
     # Construct Messages
-    system_prompt = prompts_config.get("system_prompt", "")
     messages = [{"role": "system", "content": system_prompt}]
     
     for msg in chat_history:
@@ -462,7 +489,7 @@ def _prepare_proxy_payload(data: Dict, stream: bool) -> Dict:
     messages.append({"role": "user", "content": user_prompt})
     
     return {
-        "model": data.get("model"),
+        "model": model_name,
         "messages": messages,
         "max_tokens": data.get("max_tokens", 4000),
         "stream": stream
@@ -530,5 +557,5 @@ def _generate_stream(response_obj, model_name: str) -> Generator[str, None, None
                     continue
 
 if __name__ == "__main__":
-    logger.info("🚀 Starting WALL•E Backend v2.0.0...")
+    logger.info("🚀 Starting WALL•E Backend v2.1.0...")
     app.run(debug=True, host='0.0.0.0', port=5000)
