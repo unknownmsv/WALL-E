@@ -20,6 +20,11 @@ const state = {
     sidebarOpen: window.innerWidth > 768,
     currentEditingChat: null,
     currentFile: null,
+    selectedMusicFile: null,
+    availableMusicTracks: [],
+    currentTrackIndex: -1,
+    isMusicModalDragging: false,
+    musicModalPosition: { x: 50, y: 50 },
     apiSettings: {
         useDefault: true,
         customUrl: '',
@@ -32,21 +37,57 @@ const state = {
 
 // DOM Elements
 const elements = {
+    // Layout
     sidebar: document.getElementById('sidebar'),
     mainContent: document.getElementById('mainContent'),
     overlay: document.getElementById('overlay'),
+    
+    // Header
     menuBtn: document.getElementById('menuBtn'),
     newChatBtn: document.getElementById('newChatBtn'),
     quickNewChat: document.getElementById('quickNewChat'),
+    
+    // Chat
     chatHistory: document.getElementById('chatHistory'),
     chatContainer: document.getElementById('chatContainer'),
     welcomeState: document.getElementById('welcomeState'),
+    
+    // Input
     textInput: document.getElementById('textInput'),
     modelSelector: document.getElementById('modelSelector'),
     sendBtn: document.getElementById('sendBtn'),
     attachmentBtn: document.getElementById('attachmentBtn'),
     fileInput: document.getElementById('fileInput'),
     fileInfo: document.getElementById('fileInfo'),
+    
+    // Music
+    musicLibBtn: document.getElementById('musicLibBtn'),
+    musicModal: document.getElementById('musicModal'),
+    musicList: document.getElementById('musicList'),
+    minimizeMusicModal: document.getElementById('minimizeMusicModal'),
+    closeMusicModal: document.getElementById('closeMusicModal'),
+    cancelMusicSelect: document.getElementById('cancelMusicSelect'),
+    
+    // Player
+    miniPlayer: document.getElementById('miniPlayer'),
+    minimizedPlayer: document.getElementById('minimizedPlayer'),
+    audioElement: document.getElementById('audioElement'),
+    playPauseBtn: document.getElementById('playPauseBtn'),
+    stopBtn: document.getElementById('stopBtn'),
+    prevBtn: document.getElementById('prevBtn'),
+    nextBtn: document.getElementById('nextBtn'),
+    volumeSlider: document.getElementById('volumeSlider'),
+    progressBar: document.getElementById('progressBar'),
+    currentTime: document.getElementById('currentTime'),
+    durationTime: document.getElementById('durationTime'),
+    closePlayerBtn: document.getElementById('closePlayerBtn'),
+    currentTrackName: document.getElementById('currentTrackName'),
+    minimizedTrackName: document.getElementById('minimizedTrackName'),
+    trackStatus: document.getElementById('trackStatus'),
+    restorePlayerBtn: document.getElementById('restorePlayerBtn'),
+    closeMinimizedBtn: document.getElementById('closeMinimizedBtn'),
+    
+    // Modals
     renameModal: document.getElementById('renameModal'),
     renameInput: document.getElementById('renameInput'),
     closeRenameModal: document.getElementById('closeRenameModal'),
@@ -66,9 +107,12 @@ function getApiConfig() {
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
     setupEventListeners();
+    setupDraggablePlayers(); // این خط رو اضافه کن
     loadAvailableModels();
     loadChatsFromBackend();
     updateSidebarState();
+    setupDraggableModal();
+    setupMinimizedPlayerDrag();
 });
 
 function initializeApp() {
@@ -104,6 +148,23 @@ function setupEventListeners() {
     // File upload
     elements.fileInput.addEventListener('change', handleFileUpload);
 
+    // Music library
+    elements.musicLibBtn.addEventListener('click', openMusicModal);
+    elements.closeMusicModal.addEventListener('click', closeMusicModal);
+    elements.minimizeMusicModal.addEventListener('click', minimizeMusicModal);
+    elements.cancelMusicSelect.addEventListener('click', closeMusicModal);
+
+    // Music player controls
+    elements.playPauseBtn.addEventListener('click', togglePlayPause);
+    elements.stopBtn.addEventListener('click', stopMusic);
+    elements.prevBtn.addEventListener('click', playPreviousTrack);
+    elements.nextBtn.addEventListener('click', playNextTrack);
+    elements.volumeSlider.addEventListener('input', updateVolume);
+    elements.progressBar.addEventListener('input', seekAudio);
+    elements.closePlayerBtn.addEventListener('click', closePlayer);
+    elements.restorePlayerBtn.addEventListener('click', restorePlayer);
+    elements.closeMinimizedBtn.addEventListener('click', closePlayer);
+
     // Model selector
     elements.modelSelector.addEventListener('change', function() {
         if (state.currentChatId) {
@@ -125,14 +186,607 @@ function setupEventListeners() {
         }
     });
 
-    // Close modal on backdrop click
+    // Close modals on backdrop click
     elements.renameModal.addEventListener('click', function(e) {
         if (e.target === this) {
             closeRenameModal();
         }
     });
+
+    elements.musicModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeMusicModal();
+        }
+    });
 }
 
+// Draggable Mini Player Functionality
+function setupDraggablePlayers() {
+    setupDraggableMiniPlayer();
+    setupDraggableMinimizedPlayer();
+}
+
+function setupDraggableMiniPlayer() {
+    const player = elements.miniPlayer;
+    
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+
+    function startDrag(e) {
+        // Don't start drag if clicking on controls
+        if (e.target.closest('.player-controls') || 
+            e.target.closest('.progress-container') ||
+            e.target.closest('.close-player')) {
+            return;
+        }
+        
+        isDragging = true;
+        const rect = player.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        if (e.type === 'mousedown') {
+            startX = e.clientX;
+            startY = e.clientY;
+        } else if (e.type === 'touchstart') {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        }
+        
+        player.classList.add('dragging');
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag);
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
+        
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    function drag(e) {
+        if (!isDragging) return;
+        
+        let currentX, currentY;
+        if (e.type === 'mousemove') {
+            currentX = e.clientX;
+            currentY = e.clientY;
+        } else if (e.type === 'touchmove') {
+            currentX = e.touches[0].clientX;
+            currentY = e.touches[0].clientY;
+        }
+        
+        const dx = currentX - startX;
+        const dy = currentY - startY;
+        
+        const newX = initialX + dx;
+        const newY = initialY + dy;
+        
+        // Keep player within viewport bounds
+        const maxX = window.innerWidth - player.offsetWidth;
+        const maxY = window.innerHeight - player.offsetHeight;
+        
+        const boundedX = Math.max(0, Math.min(newX, maxX));
+        const boundedY = Math.max(0, Math.min(newY, maxY));
+        
+        player.style.left = boundedX + 'px';
+        player.style.top = boundedY + 'px';
+        player.style.right = 'auto';
+        player.style.bottom = 'auto';
+    }
+
+    function stopDrag() {
+        isDragging = false;
+        player.classList.remove('dragging');
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('mouseup', stopDrag);
+        document.removeEventListener('touchend', stopDrag);
+    }
+
+    // Add event listeners for dragging
+    player.addEventListener('mousedown', startDrag);
+    player.addEventListener('touchstart', startDrag);
+    
+    // Prevent text selection while dragging
+    player.addEventListener('selectstart', function(e) {
+        if (isDragging) {
+            e.preventDefault();
+        }
+    });
+}
+
+function setupDraggableMinimizedPlayer() {
+    const player = elements.minimizedPlayer;
+    
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+
+    function startDrag(e) {
+        // Don't start drag if clicking on controls
+        if (e.target.closest('.minimized-controls')) {
+            return;
+        }
+        
+        isDragging = true;
+        const rect = player.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        if (e.type === 'mousedown') {
+            startX = e.clientX;
+            startY = e.clientY;
+        } else if (e.type === 'touchstart') {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        }
+        
+        player.classList.add('dragging');
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag);
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
+        
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    function drag(e) {
+        if (!isDragging) return;
+        
+        let currentX, currentY;
+        if (e.type === 'mousemove') {
+            currentX = e.clientX;
+            currentY = e.clientY;
+        } else if (e.type === 'touchmove') {
+            currentX = e.touches[0].clientX;
+            currentY = e.touches[0].clientY;
+        }
+        
+        const dx = currentX - startX;
+        const dy = currentY - startY;
+        
+        const newX = initialX + dx;
+        const newY = initialY + dy;
+        
+        // Keep player within viewport bounds
+        const maxX = window.innerWidth - player.offsetWidth;
+        const maxY = window.innerHeight - player.offsetHeight;
+        
+        const boundedX = Math.max(0, Math.min(newX, maxX));
+        const boundedY = Math.max(0, Math.min(newY, maxY));
+        
+        player.style.left = boundedX + 'px';
+        player.style.top = boundedY + 'px';
+        player.style.right = 'auto';
+        player.style.bottom = 'auto';
+    }
+
+    function stopDrag() {
+        isDragging = false;
+        player.classList.remove('dragging');
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('mouseup', stopDrag);
+        document.removeEventListener('touchend', stopDrag);
+    }
+
+    // Add event listeners for dragging
+    player.addEventListener('mousedown', startDrag);
+    player.addEventListener('touchstart', startDrag);
+    
+    // Prevent text selection while dragging
+    player.addEventListener('selectstart', function(e) {
+        if (isDragging) {
+            e.preventDefault();
+        }
+    });
+}
+
+// تابع minimizePlayer را اضافه کنید
+function minimizePlayer() {
+    elements.miniPlayer.classList.add('hidden');
+    elements.minimizedPlayer.classList.remove('hidden');
+    
+    // موقعیت minimized player را تنظیم کنید
+    const miniRect = elements.miniPlayer.getBoundingClientRect();
+    elements.minimizedPlayer.style.left = miniRect.left + 'px';
+    elements.minimizedPlayer.style.top = miniRect.top + 'px';
+    elements.minimizedPlayer.style.right = 'auto';
+    elements.minimizedPlayer.style.bottom = 'auto';
+}
+
+// تابع restorePlayer را اضافه کنید
+function restorePlayer() {
+    elements.miniPlayer.classList.remove('hidden');
+    elements.minimizedPlayer.classList.add('hidden');
+    
+    // موقعیت mini player را تنظیم کنید
+    const minimizedRect = elements.minimizedPlayer.getBoundingClientRect();
+    elements.miniPlayer.style.left = minimizedRect.left + 'px';
+    elements.miniPlayer.style.top = minimizedRect.top + 'px';
+    elements.miniPlayer.style.right = 'auto';
+    elements.miniPlayer.style.bottom = 'auto';
+}
+
+// Event listener برای minimize کردن با کلیک روی آیکون
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.player-icon') || 
+        (e.target.closest('.player-info') && !e.target.closest('.control-btn'))) {
+        minimizePlayer();
+    }
+});
+
+// Draggable Modal Functionality
+function setupDraggableModal() {
+    const modal = elements.musicModal;
+    const handle = modal.querySelector('.draggable-handle');
+    
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+
+    function startDrag(e) {
+        isDragging = true;
+        const rect = modal.querySelector('.modal-content').getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        if (e.type === 'mousedown') {
+            startX = e.clientX;
+            startY = e.clientY;
+        } else if (e.type === 'touchstart') {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        }
+        
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag);
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
+        
+        e.preventDefault();
+    }
+
+    function drag(e) {
+        if (!isDragging) return;
+        
+        let currentX, currentY;
+        if (e.type === 'mousemove') {
+            currentX = e.clientX;
+            currentY = e.clientY;
+        } else if (e.type === 'touchmove') {
+            currentX = e.touches[0].clientX;
+            currentY = e.touches[0].clientY;
+        }
+        
+        const dx = currentX - startX;
+        const dy = currentY - startY;
+        
+        const newX = initialX + dx;
+        const newY = initialY + dy;
+        
+        // Keep modal within viewport bounds
+        const modalContent = modal.querySelector('.modal-content');
+        const maxX = window.innerWidth - modalContent.offsetWidth;
+        const maxY = window.innerHeight - modalContent.offsetHeight;
+        
+        const boundedX = Math.max(0, Math.min(newX, maxX));
+        const boundedY = Math.max(0, Math.min(newY, maxY));
+        
+        modalContent.style.left = boundedX + 'px';
+        modalContent.style.top = boundedY + 'px';
+    }
+
+    function stopDrag() {
+        isDragging = false;
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('mouseup', stopDrag);
+        document.removeEventListener('touchend', stopDrag);
+    }
+
+    // Add event listeners for dragging
+    handle.addEventListener('mousedown', startDrag);
+    handle.addEventListener('touchstart', startDrag);
+    
+    // Prevent text selection while dragging
+    handle.addEventListener('selectstart', function(e) {
+        e.preventDefault();
+    });
+}
+
+// Draggable Minimized Player
+function setupMinimizedPlayerDrag() {
+    const player = elements.minimizedPlayer;
+    
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+
+    function startDrag(e) {
+        isDragging = true;
+        const rect = player.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        if (e.type === 'mousedown') {
+            startX = e.clientX;
+            startY = e.clientY;
+        } else if (e.type === 'touchstart') {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        }
+        
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag);
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
+        
+        e.preventDefault();
+    }
+
+    function drag(e) {
+        if (!isDragging) return;
+        
+        let currentX, currentY;
+        if (e.type === 'mousemove') {
+            currentX = e.clientX;
+            currentY = e.clientY;
+        } else if (e.type === 'touchmove') {
+            currentX = e.touches[0].clientX;
+            currentY = e.touches[0].clientY;
+        }
+        
+        const dx = currentX - startX;
+        const dy = currentY - startY;
+        
+        const newX = initialX + dx;
+        const newY = initialY + dy;
+        
+        // Keep player within viewport bounds
+        const maxX = window.innerWidth - player.offsetWidth;
+        const maxY = window.innerHeight - player.offsetHeight;
+        
+        const boundedX = Math.max(0, Math.min(newX, maxX));
+        const boundedY = Math.max(0, Math.min(newY, maxY));
+        
+        player.style.left = boundedX + 'px';
+        player.style.top = boundedY + 'px';
+        player.style.right = 'auto';
+        player.style.bottom = 'auto';
+    }
+
+    function stopDrag() {
+        isDragging = false;
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('mouseup', stopDrag);
+        document.removeEventListener('touchend', stopDrag);
+    }
+
+    // Add event listeners for dragging
+    player.addEventListener('mousedown', startDrag);
+    player.addEventListener('touchstart', startDrag);
+    
+    // Prevent text selection while dragging
+    player.addEventListener('selectstart', function(e) {
+        e.preventDefault();
+    });
+}
+
+// Music Functions
+function openMusicModal() {
+    loadMusicLibrary();
+    elements.musicModal.classList.add('active');
+    
+    // Reset position to center if not already set
+    const modalContent = elements.musicModal.querySelector('.modal-content');
+    if (!modalContent.style.left && !modalContent.style.top) {
+        const rect = modalContent.getBoundingClientRect();
+        const x = (window.innerWidth - rect.width) / 2;
+        const y = (window.innerHeight - rect.height) / 2;
+        modalContent.style.left = x + 'px';
+        modalContent.style.top = y + 'px';
+    }
+}
+
+function closeMusicModal() {
+    elements.musicModal.classList.remove('active');
+}
+
+function minimizeMusicModal() {
+    closeMusicModal();
+    // Show minimized player if music is playing
+    if (!elements.audioElement.paused || elements.audioElement.currentTime > 0) {
+        elements.minimizedPlayer.classList.remove('hidden');
+    }
+}
+
+async function loadMusicLibrary() {
+    try {
+        const apiConfig = getApiConfig();
+        const response = await fetch(`${apiConfig.url}/api/music/library`);
+        const data = await response.json();
+
+        elements.musicList.innerHTML = '';
+
+        if (!data.tracks || data.tracks.length === 0) {
+            elements.musicList.innerHTML = `
+                <div style="text-align:center; padding: 20px; color: var(--text-secondary);">
+                    No music found in library.<br>
+                    <small>Add .mp3 or .ogg files to your Music directory.</small>
+                </div>`;
+            return;
+        }
+
+        state.availableMusicTracks = data.tracks;
+
+        data.tracks.forEach((track, index) => {
+            const trackElement = document.createElement('div');
+            trackElement.className = 'track-item';
+            trackElement.innerHTML = `
+                <i class="fas fa-music"></i>
+                <div class="track-info">${track.filename}</div>
+                <div style="font-size:12px; color: var(--text-secondary);">${(track.size_bytes / 1024 / 1024).toFixed(1)} MB</div>
+            `;
+            trackElement.addEventListener('click', () => playTrack(track.filename, index));
+            elements.musicList.appendChild(trackElement);
+        });
+
+    } catch (error) {
+        console.error('Music load failed:', error);
+        elements.musicList.innerHTML = '<div style="color:var(--danger); text-align:center;">Error loading music library.</div>';
+    }
+}
+
+function playTrack(filename, trackIndex = -1) {
+    const apiConfig = getApiConfig();
+    
+    // Close modal first
+    closeMusicModal();
+    
+    // Set current track index
+    if (trackIndex !== -1) {
+        state.currentTrackIndex = trackIndex;
+    } else {
+        // Find track index by filename
+        state.currentTrackIndex = state.availableMusicTracks.findIndex(track => track.filename === filename);
+    }
+    
+    // Show player
+    elements.miniPlayer.classList.remove('hidden');
+    elements.minimizedPlayer.classList.add('hidden');
+    elements.currentTrackName.textContent = filename;
+    elements.minimizedTrackName.textContent = filename;
+    elements.trackStatus.textContent = 'Loading...';
+    
+    // Set audio source
+    elements.audioElement.src = `${apiConfig.url}/api/music/play?filename=${encodeURIComponent(filename)}`;
+    
+    // Reset progress
+    elements.progressBar.value = 0;
+    elements.currentTime.textContent = '0:00';
+    
+    // Play the track
+    elements.audioElement.play().then(() => {
+        elements.trackStatus.textContent = 'Playing';
+        elements.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    }).catch(error => {
+        console.error('Playback failed:', error);
+        elements.trackStatus.textContent = 'Playback failed';
+    });
+}
+
+function togglePlayPause() {
+    if (elements.audioElement.paused) {
+        elements.audioElement.play();
+        elements.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        elements.trackStatus.textContent = 'Playing';
+    } else {
+        elements.audioElement.pause();
+        elements.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+        elements.trackStatus.textContent = 'Paused';
+    }
+}
+
+function stopMusic() {
+    elements.audioElement.pause();
+    elements.audioElement.currentTime = 0;
+    elements.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+    elements.trackStatus.textContent = 'Stopped';
+    elements.progressBar.value = 0;
+    elements.currentTime.textContent = '0:00';
+}
+
+function playPreviousTrack() {
+    if (state.availableMusicTracks.length === 0) return;
+    
+    state.currentTrackIndex--;
+    if (state.currentTrackIndex < 0) {
+        state.currentTrackIndex = state.availableMusicTracks.length - 1;
+    }
+    
+    const previousTrack = state.availableMusicTracks[state.currentTrackIndex];
+    playTrack(previousTrack.filename, state.currentTrackIndex);
+}
+
+function playNextTrack() {
+    if (state.availableMusicTracks.length === 0) return;
+    
+    state.currentTrackIndex++;
+    if (state.currentTrackIndex >= state.availableMusicTracks.length) {
+        state.currentTrackIndex = 0;
+    }
+    
+    const nextTrack = state.availableMusicTracks[state.currentTrackIndex];
+    playTrack(nextTrack.filename, state.currentTrackIndex);
+}
+
+function updateVolume() {
+    elements.audioElement.volume = elements.volumeSlider.value;
+}
+
+function seekAudio() {
+    const seekTime = (elements.progressBar.value / 100) * elements.audioElement.duration;
+    elements.audioElement.currentTime = seekTime;
+}
+
+function closePlayer() {
+    stopMusic();
+    elements.miniPlayer.classList.add('hidden');
+    elements.minimizedPlayer.classList.add('hidden');
+}
+
+function minimizePlayer() {
+    elements.miniPlayer.classList.add('hidden');
+    elements.minimizedPlayer.classList.remove('hidden');
+}
+
+function restorePlayer() {
+    elements.miniPlayer.classList.remove('hidden');
+    elements.minimizedPlayer.classList.add('hidden');
+}
+
+// Audio event listeners
+elements.audioElement.addEventListener('loadedmetadata', function() {
+    const duration = formatTime(elements.audioElement.duration);
+    elements.durationTime.textContent = duration;
+});
+
+elements.audioElement.addEventListener('timeupdate', function() {
+    const current = elements.audioElement.currentTime;
+    const duration = elements.audioElement.duration;
+    
+    if (duration) {
+        const progress = (current / duration) * 100;
+        elements.progressBar.value = progress;
+        elements.currentTime.textContent = formatTime(current);
+    }
+});
+
+elements.audioElement.addEventListener('ended', function() {
+    elements.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+    elements.trackStatus.textContent = 'Finished';
+    
+    // Auto-play next track
+    setTimeout(() => {
+        playNextTrack();
+    }, 1000);
+});
+
+elements.audioElement.addEventListener('pause', function() {
+    if (!elements.audioElement.ended) {
+        elements.trackStatus.textContent = 'Paused';
+    }
+});
+
+// Helper function to format time
+function formatTime(seconds) {
+    if (isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// File upload handler
 function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -165,6 +819,7 @@ function handleFileUpload(event) {
     reader.readAsText(file);
 }
 
+// UI Functions
 function toggleSidebar() {
     state.sidebarOpen = !state.sidebarOpen;
     updateSidebarState();
@@ -221,11 +876,6 @@ async function loadAvailableModels() {
             populateModelSelector();
         }
         
-        // Load suggestions from config
-        if (data.prompt && data.prompt.suggestions) {
-            populateSuggestions(data.prompt.suggestions);
-        }
-        
         // Set default model if available
         if (data.models && data.models.default_model) {
             elements.modelSelector.value = data.models.default_model;
@@ -233,7 +883,7 @@ async function loadAvailableModels() {
     } catch (error) {
         console.error('Error loading config:', error);
         // Fallback models
-        state.availableModels = ['openai/gpt-4o-mini', 'google/gemini-2.0-flash-001'];
+        state.availableModels = ['openai/gpt-4o-mini'];
         populateModelSelector();
     }
 }
@@ -245,7 +895,6 @@ function populateModelSelector() {
         const option = document.createElement('option');
         option.value = modelId;
         
-        // استفاده از نام نمایشی اگر موجود باشد
         const modelConfig = state.modelsConfig && state.modelsConfig[modelId];
         if (modelConfig && modelConfig.name) {
             option.textContent = modelConfig.name;
@@ -257,7 +906,7 @@ function populateModelSelector() {
         elements.modelSelector.appendChild(option);
     });
     
-    // انتخاب مدل پیش‌فرض اگر تنظیم شده
+    // Set default model
     if (state.modelsConfig && state.modelsConfig.default_model) {
         elements.modelSelector.value = state.modelsConfig.default_model;
     } else if (state.availableModels.length > 0) {
@@ -265,26 +914,6 @@ function populateModelSelector() {
     }
 }
 
-function populateSuggestions(suggestions) {
-    const container = document.getElementById('suggestionChips');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    suggestions.forEach(suggestion => {
-        const chip = document.createElement('div');
-        chip.className = 'chip';
-        chip.textContent = suggestion;
-        chip.dataset.prompt = suggestion;
-        chip.addEventListener('click', function() {
-            elements.textInput.value = this.dataset.prompt;
-            elements.textInput.focus();
-            updateSendButtonState();
-        });
-        container.appendChild(chip);
-    });
-}
-
-// تابع جدید برای گرفتن اطلاعات مدل
 function getModelInfo(modelId) {
     if (state.modelsConfig && state.modelsConfig[modelId]) {
         return state.modelsConfig[modelId];
@@ -298,6 +927,7 @@ function getModelInfo(modelId) {
     };
 }
 
+// Chat Management
 async function createNewChat() {
     const chatId = 'chat_' + Date.now();
     const chat = {
@@ -325,73 +955,51 @@ async function createNewChat() {
     }
 }
 
+// Main Send Message Function
 async function sendMessage() {
     const message = elements.textInput.value.trim();
     if (!message || state.isWaitingForResponse || state.isStreaming) return;
 
-    // Add user message
     await addMessageToChat('user', message);
     elements.textInput.value = '';
     elements.textInput.style.height = 'auto';
     updateSendButtonState();
+    clearFileAttachment();
 
-    // Clear file info
-    if (state.currentFile) {
-        state.currentFile = null;
-        elements.fileInfo.classList.remove('visible');
-        elements.fileInput.value = '';
-    }
-
-    // Show typing indicator
     showTypingIndicator();
     state.isWaitingForResponse = true;
     state.isStreaming = true;
     state.currentStreamResponse = '';
 
     try {
-        // Create streaming message
+        const chatHistory = buildChatHistory();
+        const modelInfo = getModelInfo(elements.modelSelector.value);
+        const maxTokens = modelInfo.max_tokens || 8000;
+        const apiConfig = getApiConfig();
+
+        const payload = {
+            prompt: message,
+            model: elements.modelSelector.value,
+            stream: true,
+            chat_history: chatHistory,
+            max_tokens: maxTokens
+        };
+
         state.currentStreamMessage = {
             role: 'assistant',
             content: '',
             timestamp: new Date().toISOString(),
             liked: null
         };
-        
-        // Show empty streaming message
         const streamMessageElement = renderStreamingMessage(state.currentStreamMessage);
 
-        // Prepare chat history for API
-        let chatHistory = [];
-        if (state.currentChatId) {
-            const chat = state.chats.get(state.currentChatId);
-            if (chat && chat.messages.length > 0) {
-                // Send all messages except the new one we just added
-                chatHistory = chat.messages.slice(0, -1).map(msg => ({
-                    role: msg.role,
-                    content: msg.content
-                }));
-            }
-        }
-
-        // Get model-specific max_tokens
-        const modelInfo = getModelInfo(elements.modelSelector.value);
-        const maxTokens = modelInfo.max_tokens || 8000;
-
-        // Send streaming request with chat history
-        const apiConfig = getApiConfig();
         const response = await fetch(`${apiConfig.url}/api/chat`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-API-Key': apiConfig.key
             },
-            body: JSON.stringify({
-                prompt: message,
-                model: elements.modelSelector.value,
-                stream: true,
-                chat_history: chatHistory,
-                max_tokens: maxTokens
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
@@ -400,89 +1008,95 @@ async function sendMessage() {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        
-        // Remove typing indicator
         removeTypingIndicator();
 
         while (true) {
             const { value, done } = await reader.read();
-            
-            if (done) {
-                break;
-            }
+            if (done) break;
 
             const chunk = decoder.decode(value);
             const lines = chunk.split('\n');
-            
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    
-                    if (data === '') continue;
-                    if (data === '[DONE]') continue;
-                    
-                    try {
-                        const parsed = JSON.parse(data);
-                        
-                        if (parsed.done) {
-                            // End of stream
-                            state.isStreaming = false;
-                            state.isWaitingForResponse = false;
-                            
-                            // Save final message
-                            if (state.currentChatId && state.currentStreamMessage) {
-                                const chat = state.chats.get(state.currentChatId);
-                                if (chat) {
-                                    // Add tools to final message
-                                    addMessageTools(streamMessageElement, state.currentStreamMessage.timestamp);
-                                    chat.messages.push(state.currentStreamMessage);
-                                    await saveChatToBackend(chat);
-                                    renderChatHistory();
-                                }
-                            }
-                            
-                            state.currentStreamMessage = null;
-                            state.currentStreamResponse = '';
-                            return;
-                        }
-                        
-                        if (parsed.content) {
-                            // Add new content
-                            state.currentStreamResponse += parsed.content;
-                            updateStreamingMessage(state.currentStreamResponse, streamMessageElement);
-                        }
-                    } catch (e) {
-                        console.error('Error parsing stream data:', e);
-                    }
-                }
-            }
-        }
 
-    } catch (error) {
-        removeTypingIndicator();
-        state.isStreaming = false;
-        state.isWaitingForResponse = false;
-        
-        if (state.currentStreamMessage) {
-            state.currentStreamMessage.content = `Connection error: ${error.message}`;
-            updateStreamingMessage(state.currentStreamMessage.content);
-            
-            // Save error message
-            if (state.currentChatId) {
-                const chat = state.chats.get(state.currentChatId);
-                if (chat) {
-                    chat.messages.push(state.currentStreamMessage);
-                    await saveChatToBackend(chat);
-                    renderChatHistory();
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const data = line.slice(6);
+                if (!data || data === '[DONE]') continue;
+
+                try {
+                    const parsed = JSON.parse(data);
+
+                    if (parsed.done) {
+                        state.isStreaming = false;
+                        state.isWaitingForResponse = false;
+                        if (state.currentChatId && state.currentStreamMessage) {
+                            addMessageTools(streamMessageElement, state.currentStreamMessage.timestamp);
+                            const chat = state.chats.get(state.currentChatId);
+                            if (chat) {
+                                chat.messages.push(state.currentStreamMessage);
+                                await saveChatToBackend(chat);
+                                renderChatHistory();
+                            }
+                        }
+                        state.currentStreamMessage = null;
+                        state.currentStreamResponse = '';
+                        updateSendButtonState();
+                        return;
+                    }
+
+                    if (parsed.content) {
+                        state.currentStreamResponse += parsed.content;
+                        updateStreamingMessage(state.currentStreamResponse, streamMessageElement);
+                    }
+                } catch (e) {
+                    console.error('Error parsing stream data:', e);
                 }
             }
         }
-        
-        state.currentStreamMessage = null;
-        state.currentStreamResponse = '';
+    } catch (error) {
+        handleSendMessageError(error);
     }
 }
 
+// Helper Functions
+function buildChatHistory() {
+    if (!state.currentChatId) return [];
+    const chat = state.chats.get(state.currentChatId);
+    if (!chat || chat.messages.length === 0) return [];
+    return chat.messages.slice(0, -1).map(msg => ({ role: msg.role, content: msg.content }));
+}
+
+function clearFileAttachment() {
+    if (state.currentFile) {
+        state.currentFile = null;
+        elements.fileInfo.classList.remove('visible');
+        elements.fileInput.value = '';
+    }
+}
+
+async function handleSendMessageError(error) {
+    console.error('Send message failed:', error);
+    removeTypingIndicator();
+    state.isStreaming = false;
+    state.isWaitingForResponse = false;
+
+    if (state.currentStreamMessage) {
+        state.currentStreamMessage.content = `Connection error: ${error.message}`;
+        updateStreamingMessage(state.currentStreamMessage.content);
+        const chat = state.chats.get(state.currentChatId);
+        if (chat) {
+            chat.messages.push(state.currentStreamMessage);
+            await saveChatToBackend(chat);
+            renderChatHistory();
+        }
+        state.currentStreamMessage = null;
+    } else {
+        await addMessageToChat('assistant', `Connection error: ${error.message}`);
+    }
+    state.currentStreamResponse = '';
+    updateSendButtonState();
+}
+
+// Message Rendering
 function renderStreamingMessage(message) {
     elements.welcomeState.style.display = 'none';
     
@@ -676,38 +1290,7 @@ function removeTypingIndicator() {
     }
 }
 
-async function rateMessage(timestamp, liked) {
-    if (!state.currentChatId) return;
-    
-    const chat = state.chats.get(state.currentChatId);
-    if (!chat) return;
-    
-    const message = chat.messages.find(msg => msg.timestamp === timestamp);
-    if (message) {
-        message.liked = liked;
-        await saveChatToBackend(chat);
-    }
-}
-
-function copyMessageToClipboard(timestamp) {
-    if (!state.currentChatId) return;
-    
-    const chat = state.chats.get(state.currentChatId);
-    if (!chat) return;
-    
-    const message = chat.messages.find(msg => msg.timestamp === timestamp);
-    if (message) {
-        navigator.clipboard.writeText(message.content).then(() => {
-            // Show copy confirmation
-            const originalText = event.target.innerHTML;
-            event.target.innerHTML = '<i class="fas fa-check"></i>';
-            setTimeout(() => {
-                event.target.innerHTML = originalText;
-            }, 2000);
-        });
-    }
-}
-
+// Chat History Management
 function getTimeSection(date) {
     const now = new Date();
     const chatDate = new Date(date);
@@ -833,7 +1416,7 @@ function renderCurrentChat() {
     elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
 }
 
-// Chat management functions
+// Chat Actions
 async function pinChat(chatId) {
     const chat = state.chats.get(chatId);
     if (chat) {
@@ -996,9 +1579,39 @@ async function deleteChatFromBackend(chatId) {
     }
 }
 
-// Make functions globally available for onclick handlers
-window.rateMessage = rateMessage;
-window.copyMessageToClipboard = copyMessageToClipboard;
+// Global Functions
+window.rateMessage = async function(timestamp, liked) {
+    if (!state.currentChatId) return;
+    
+    const chat = state.chats.get(state.currentChatId);
+    if (!chat) return;
+    
+    const message = chat.messages.find(msg => msg.timestamp === timestamp);
+    if (message) {
+        message.liked = liked;
+        await saveChatToBackend(chat);
+    }
+}
+
+window.copyMessageToClipboard = function(timestamp) {
+    if (!state.currentChatId) return;
+    
+    const chat = state.chats.get(state.currentChatId);
+    if (!chat) return;
+    
+    const message = chat.messages.find(msg => msg.timestamp === timestamp);
+    if (message) {
+        navigator.clipboard.writeText(message.content).then(() => {
+            // Show copy confirmation
+            const originalText = event.target.innerHTML;
+            event.target.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                event.target.innerHTML = originalText;
+            }, 2000);
+        });
+    }
+}
+
 window.pinChat = pinChat;
 window.renameChat = renameChat;
 window.deleteChat = deleteChat;
@@ -1007,4 +1620,11 @@ window.openSettings = openSettings;
 // Handle window resize
 window.addEventListener('resize', function() {
     updateSidebarState();
+});
+
+// Add minimize functionality to mini player
+document.addEventListener('click', function(e) {
+    if (e.target.closest('#miniPlayer') && e.target.classList.contains('player-icon')) {
+        minimizePlayer();
+    }
 });

@@ -65,31 +65,121 @@
             <div class="input-bar">
                 <div class="input-wrapper">
                     <div class="input-container">
+                        <!-- Music Library Button -->
+                        <button class="attachment-btn" id="musicLibBtn" title="Music Library">
+                            <i class="fas fa-music"></i>
+                        </button>
+                        
+                        <!-- File Upload -->
                         <div class="file-upload-wrapper">
                             <button class="attachment-btn" id="attachmentBtn" title="Upload file">
                                 <i class="fas fa-plus"></i>
                             </button>
                             <input type="file" class="file-input" id="fileInput" accept=".py,.js,.html,.rs,.ts,.css">
                         </div>
+                        
+                        <!-- Text Input -->
                         <textarea 
                             class="text-input" 
                             id="textInput" 
                             placeholder="Ask anything..." 
                             rows="1"
                         ></textarea>
+                        
+                        <!-- Model Selector -->
                         <div class="model-selector-container">
                             <div class="model-selector-icon">✦</div>
                             <select class="model-selector" id="modelSelector">
-                                <!-- Models will be auto-populated from API -->
                                 <option value="" disabled selected>Loading models...</option>
                             </select>
                         </div>
+                        
+                        <!-- Send Button -->
                         <button class="send-btn" id="sendBtn" disabled>
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
                     <div class="file-info" id="fileInfo"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Music Library Modal -->
+        <div class="modal draggable" id="musicModal">
+            <div class="modal-content music-modal-content">
+                <div class="modal-header draggable-handle">
+                    <h3 class="modal-title">🎵 Music Library</h3>
+                    <div class="modal-controls">
+                        <button class="modal-control-btn" id="minimizeMusicModal" title="Minimize">
+                            <i class="fas fa-window-minimize"></i>
+                        </button>
+                        <button class="modal-control-btn" id="closeMusicModal" title="Close">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="musicList" class="music-list-container">
+                    <div style="text-align:center; color: var(--text-secondary);">Loading tracks...</div>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn secondary" id="cancelMusicSelect">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mini Music Player -->
+        <div id="miniPlayer" class="mini-player hidden">
+            <div class="player-info">
+                <div class="player-icon" title="Click to minimize">🎵</div>
+                <div class="track-details">
+                    <div class="track-name" id="currentTrackName">No Track Playing</div>
+                    <div class="track-status" id="trackStatus">Stopped</div>
+                </div>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="progress-container">
+                <span class="time-display" id="currentTime">0:00</span>
+                <input type="range" id="progressBar" class="progress-bar" min="0" max="100" value="0">
+                <span class="time-display" id="durationTime">0:00</span>
+            </div>
+            
+            <div class="player-controls">
+                <audio id="audioElement"></audio>
+                <button class="control-btn" id="prevBtn" title="Previous">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button class="control-btn" id="playPauseBtn" title="Play/Pause">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button class="control-btn" id="stopBtn" title="Stop">
+                    <i class="fas fa-stop"></i>
+                </button>
+                <button class="control-btn" id="nextBtn" title="Next">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+                <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.8" title="Volume">
+            </div>
+            <button class="close-player" id="closePlayerBtn" title="Close Player">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Minimized Music Player -->
+        <div id="minimizedPlayer" class="minimized-player hidden">
+            <div class="minimized-info">
+                <div class="minimized-icon">🎵</div>
+                <div class="minimized-details">
+                    <div class="minimized-track" id="minimizedTrackName">Music Player</div>
+                </div>
+            </div>
+            <div class="minimized-controls">
+                <button class="minimized-btn" id="restorePlayerBtn" title="Restore">
+                    <i class="fas fa-window-restore"></i>
+                </button>
+                <button class="minimized-btn" id="closeMinimizedBtn" title="Close">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
         </div>
 
